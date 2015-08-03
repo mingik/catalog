@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Catalog App</title>
+</head>
+<body>
+  Catalog App
+
+  <a href="/catalog/add">Add Item</a>
+  <br />
+  <ul id="categories">Categories:
+    {% for category in categories %}
+      <li><a href="/catalog/{{ category['name'] }}/items">{{ category['name'] }}</a></li>
+    {% endfor %}
+  </ul>
+
+  <ul id="latestItems">Latest Items:
+    {% for item in latest %}
+      <li><a href="/catalog/{{ item['cat_name'] }}/{{ item['title'] }}">{{ item['title'] }}</a></li>
+    {% endfor %}
+  </ul>
+</body>

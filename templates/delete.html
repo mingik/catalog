@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Catalog App</title>
+</head>
+<body>
+  Catalog App
+
+  <h2>Delete item </h2>
+  Are you sure you want to delete?
+  <br/>
+  <form action="/catalog/delete" method="POST">
+    <input type="hidden" name="item_title" value="{{item}}">
+    <input type="submit" value="Submit"></input>
+  </form>
+</body>

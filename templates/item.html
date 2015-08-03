@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Catalog App</title>
+</head>
+<body>
+  Catalog App
+  <h2> {{ category }}</h2>
+  <br /> Description: 
+  {{ item.description }}
+  <br/>
+  <a href="/catalog/{{item['title']}}/edit">Edit</a> | <a href="/catalog/{{item['title']}}/delete">Delete</a>
+</body>
