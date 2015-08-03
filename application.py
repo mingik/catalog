@@ -147,7 +147,7 @@ def get_item_by_title_db(item_title):
 
     return items
     
-def get_category_by_item_id_db(item_id):
+def get_category_by_id_db(cat_id):
     """
     Return Category entry that contains Item with provided item_id
     or None.
@@ -158,16 +158,8 @@ def get_category_by_item_id_db(item_id):
     
     with conn:
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as curs:
-            curs.execute("SELECT cat_id FROM items WHERE id=%s", (item_id,))
-            cat_ids = curs.fetchall()
-
-    if (cat_ids):
-        cat_id = cat_ids[0]
-        with conn:
-            with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as curs:
-                curs.execute("SELECT * FROM categories WHERE id=%s",
-                             (cat_id['cat_id'],))
-                category = curs.fetchone()
+            curs.execute("SELECT * FROM categories WHERE id=%s", (cat_id,))
+            category = curs.fetchone()
         
     conn.close()
 
@@ -325,6 +317,7 @@ def add_item_db(item_title, item_description, category_name):
 
             if (category):
                 cat_id = int(category['id'])
+                print 'cat_id=',cat_id
                 curs.execute("INSERT INTO items (cat_id,title,description) VALUES (%s,%s,%s);", (cat_id,item_title,item_description))
                 ret = 1
 
@@ -432,9 +425,11 @@ def edit_item(item):
     'error.html' template if any errors occurred.
     """
     it = get_item_by_title_db(item)
+
     if (it):
-        category = get_category_by_item_id_db(it['id'])
+        category = get_category_by_id_db(int(it['cat_id']))
         categories = get_categories_db()
+
         return render_template('edit.html', item=it, categories=categories,
                                category=category)
     else:

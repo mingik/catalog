@@ -1,0 +1,280 @@
+from flask import Flask, jsonify, render_template
+
+app = Flask(__name__)
+
+catalog = {
+  "category" : [
+    {
+      "id": 1,
+      "name": "Soccer",
+      "Items": [
+          {
+              "cat_id": 1, 
+              "description": "The shoes",
+              "id": 1,
+              "title": "Soccer Cleats"
+          },
+          {
+              "cat_id": 1,
+              "description": "The shirt",
+              "id": 2, 
+              "title": "Jersey"
+          }
+      ]
+    },
+      {
+          "id": 2,
+          "name": "Basketball"
+    },
+      {
+          "id": 3,
+          "name": "Baseball",
+          "Items": [
+              {
+                  "cat_id": 3,
+                  "description": "The bat",
+                  "id": 3,
+                  "title": "Bat"
+              }
+        ]
+      },
+      {
+          "id": 4,
+          "name": "Fresbee"
+    },
+      {
+          "id": 5,
+          "name": "Snowboarding",
+          "Items": [
+              {
+                "cat_id": 5,
+                  "description": "Best of any terrain",
+                  "id": 7,
+                  "title": "Snowboard"
+              }
+          ]
+    },
+      {
+          "id": 6,
+          "name": "Rock Climbing"
+      },
+      {
+        "id": 7,
+          "name": "Foosball"
+      },
+      {
+          "id": 8,
+          "name": "Skating"
+      },
+    {
+        "id": 9,
+        "name": "Hockey"
+    }
+  ],
+    "latest_items": [
+        {
+            "cat_id": 5,
+            "cat_name": "Snowboarding",
+            "description": "Best of any terrain",
+            "id": 7,
+            "title": "Snowboard"
+        },
+        {
+            "cat_id": 3,
+          "cat_name": "Baseball",
+            "description": "The bat",
+            "id": 3,
+            "title": "Bat"          
+        },
+        {
+            "cat_id": 1,
+            "cat_name": "Soccer",
+            "description": "The shoes",
+            "id": 1,
+            "title": "Soccer Cleats"
+        }
+    ]
+}
+
+valid_actions = ["edit", "delete"]
+
+# DB configuration:
+
+def connect():
+    """Connect to the PostgreSQL database.  Returns a database connection."""
+    return psycopg2.connect("dbname=catalog")
+
+def executeStatement(statement, args=()):
+    """
+    This function returns the result of quering catalog
+    based on category's name and item's title in this category.
+    Returned result is one of:
+    1) item with title equal to 'item_title' and residing in
+    category with name equal to 'category_name'
+    2) None
+    """
+    res = None
+    try:
+        con = connect()
+        cur = con.cursor()
+        res = cur.execute(statement, args)
+        con.commit()
+    except:
+        if con:
+            con.rollback()
+
+    finally:
+        if con:
+            con.close()
+        return res
+
+def fetchAllStatement(statement, args=()):
+    """
+    This function returns the result of quering catalog
+    based on category's name and item's title in this category.
+    Returned result is one of:
+    1) item with title equal to 'item_title' and residing in
+    category with name equal to 'category_name'
+    2) None
+    """
+    res = []
+    try:
+        con = connect()
+        cur = con.cursor()
+        cur.execute(statement, args)
+        res = cur.fetchall()
+        con.commit()
+
+    except:
+        if con:
+            con.rollback()
+
+    finally:
+        if con:
+            con.close()
+        return res
+
+# DB extraction
+
+def get_json():
+    """
+    """
+    category_list = fetchAllStatement("SELECT * FROM categories")
+    items_list = fetchAllStatement("SELECT * FROM items")
+
+    return jsonify(catalog)
+
+def get_item(category_name, item_title):
+    """
+    This function returns the result of quering catalog
+    based on category's name and item's title in this category.
+    Returned result is one of:
+    1) item with title equal to 'item_title' and residing in
+    category with name equal to 'category_name'
+    2) None
+    """
+    category_list = fetchAllStatement("SELECT * FROM categories WHERE name=%s", (category_name))
+    category = category_list[0] if len(category_list) > 0 else {}
+    items_list = fetchAllStatement("SELECT * FROM items WHERE cat_id=%s", (category.id))
+    items = [item for item in items_list if (item["title"] == item_title)]
+    if (items):
+        return items[0]
+    else:
+        return None
+
+def get_items(category_name):
+    """
+    This function returns the result of quering catalog
+    based on category's name and item's title in this category.
+    Returned result is one of:
+    1) item with title equal to 'item_title' and residing in
+    category with name equal to 'category_name'
+    2) None
+    """
+    category_list = fetchAllStatement("SELECT * FROM categories WHERE name=%s", (category_name))
+    if (category_list):
+        category = category_list[0]
+        items_list = fetchAllStatement("SELECT * FROM items WHERE cat_id=%s", (category.id))
+        return items_list
+    else:
+        return None
+
+def get_categories():
+    """
+    This function returns the result of quering catalog
+    based on category's name and item's title in this category.
+    Returned result is one of:
+    1) item with title equal to 'item_title' and residing in
+    category with name equal to 'category_name'
+    2) None
+    """
+    category_list = fetchAllStatement("SELECT * FROM categories WHERE name=%s", (category_name))
+    return category_list
+
+def get_latest_items():
+    """
+    This function returns the result of quering catalog
+    based on category's name and item's title in this category.
+    Returned result is one of:
+    1) item with title equal to 'item_title' and residing in
+    category with name equal to 'category_name'
+    2) None
+    """
+    latest_items_list = fetchAllStatement("SELECT * FROM items ORDER BY id", (category_name))
+    return latest_items_list
+
+# Enpoints configuration
+
+@app.route('/')
+def catalog_app():
+    """
+    """
+    categories = get_categories()
+    latest = get_latest_items()
+    return render_template('catalog.html', categories=categories, latest=latest)
+
+@app.route('/catalog.json')
+def catalog_json():
+    """
+    """
+    return get_json()
+
+@app.route('/catalog/add')
+def add_item():
+    """
+    """
+    categories = get_categories()
+    return render_template('edit.html', item={"title":"", "description":""}, categories=categories)
+
+@app.route('/catalog/<item>/delete', methods=['POST'])
+def delete_item(item):
+    """
+    """
+    return render_template('catalog.html')
+
+@app.route('/catalog/<category>/<item>') # TODO: make case insensitive
+def category(category, item):
+    """
+    """
+    if (item == 'delete'):
+        return render_template('delete.html')
+    elif (item == 'edit'):
+        it = get_item_by_name(item)
+        category = get_category_by_item(it)
+        return render_template('edit.html', item={"title":"", "description":""}, categories=categories)
+    elif (item == 'items'):
+        items = get_items(category)
+        if (items):
+            return render_template('items.html', categories=catalog["category"], category=category, items=items)
+        else:
+            return render_template('error.html')
+    else:
+        item = get_item(category, item)
+        if (item):
+            return render_template('item.html', item=item, category=category)
+        else:
+            return render_template('error.html')
+
+if __name__ == '__main__':
+    app.debug = True # TODO: remove debug
+    app.run(port=8000)
