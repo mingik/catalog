@@ -29,22 +29,23 @@ INSERT INTO categories VALUES (7,'Foosball');
 INSERT INTO categories VALUES (8,'Skating');
 INSERT INTO categories VALUES (9,'Hockey');
 
-TRUNCATE TABLE items;
+Realm of RacketTRUNCATE TABLE items;
 
 create table items (
        id SERIAL,
        cat_id SERIAL references categories(id),
+       cat_name varchar(20) NOT NULL,
        title varchar(20) NOT NULL,
        description varchar(100) NOT NULL
 );
 
-INSERT INTO items VALUES (1,1,'Soccer Cleats','The shoes.');
-INSERT INTO items VALUES (2,1,'Jersey','The shirt with number on the back.');
-INSERT INTO items VALUES (3,2,'Air Jordan','Sneakers for jumping high.');
-INSERT INTO items VALUES (4,3,'Bat','Black bat.');
-INSERT INTO items VALUES (5,4,'Disc','The flying disc.');
-INSERT INTO items VALUES (6,5,'Snowboard','Best snowboard for any terrain.');
-INSERT INTO items VALUES (7,6,'Rope','Strong rope for climbing.');
-INSERT INTO items VALUES (8,7,'Ball','Little plastic ball.');
-INSERT INTO items VALUES (9,8,'Board','Skating board.');
-INSERT INTO items VALUES (10,9,'Mask','Mask for goale.');
+INSERT INTO items VALUES (1,1,'Soccer','Soccer Cleats','The shoes.');
+INSERT INTO items VALUES (2,1,'Soccer','Jersey','The shirt with number on the back.');
+INSERT INTO items VALUES (3,2,'Basketball','Air Jordan','Sneakers for jumping high.');
+INSERT INTO items VALUES (4,3,'Baseball','Bat','Black bat.');
+INSERT INTO items VALUES (5,4,'Fresbee','Disc','The flying disc.');
+INSERT INTO items VALUES (6,5,'Snowboarding','Snowboard','Best snowboard for any terrain.');
+INSERT INTO items VALUES (7,6,'Rock Climbing','Rope','Strong rope for climbing.');
+INSERT INTO items VALUES (8,7,'Foosball','Ball','Little plastic ball.');
+INSERT INTO items VALUES (9,8,'Skating','Board','Skating board.');
+INSERT INTO items VALUES (10,9,'Hockey','Mask','Mask for goale.');

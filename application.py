@@ -4,11 +4,12 @@
 #
 
 
-from flask import Flask, jsonify, render_template, request, redirect
+from flask import Flask, jsonify, render_template, request, redirect, session, flash, url_for
 import psycopg2
 import psycopg2.extras
 
 app = Flask(__name__)
+app.config.from_object('config')
 
 catalog = {
   "category" : [
@@ -180,30 +181,15 @@ def get_item_db(category_name, item_title):
 
     with conn:
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as curs:
-            curs.execute("SELECT * FROM categories WHERE name=%s",
-                         (category_name,))
-            category = curs.fetchone()
-    
-    if (category):
-        with conn:
-            with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as curs:
-                curs.execute("SELECT * FROM items WHERE cat_id=%s",
-                             (category[0],))
-                items_list = curs.fetchall()
-                items = [item for item in items_list
-                         if (item['title'] == item_title)]
-
-    conn.close()
-
-    if (items):
-        return items[0]
-    else:
-        return None
+            curs.execute("SELECT * FROM items WHERE cat_name=%s AND title=%s",
+                             (category_name,item_title))
+            item = curs.fetchone()
+        return item
 
 def get_items_db(category_name):
     """
     This function returns the result of quering catalog
-    based on category's name and item's title in this category.
+    based on category's name.
     Returned result is one of:
     1) list of items residing in category with name equal to 
     'category_name'
@@ -213,15 +199,8 @@ def get_items_db(category_name):
 
     with conn:
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as curs:
-            curs.execute("SELECT * FROM categories WHERE name=%s",
-                         (category_name,))
-            category = curs.fetchone()
-            
-    if (category):
-        with conn:
-            with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as curs:
-                curs.execute("SELECT * FROM items WHERE cat_id=%s",
-                             (category['id'],))
+                curs.execute("SELECT * FROM items WHERE cat_name=%s",
+                             (category_name,))
                 items_list = curs.fetchall()
 
     conn.close()
@@ -241,7 +220,7 @@ def get_categories_db():
 
     with conn:
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as curs:
-            curs.execute("SELECT * FROM categories")
+            curs.execute("SELECT * FROM categories") # SELECT DISTINCT??
             category_list = curs.fetchall()
     
     conn.close()
@@ -270,7 +249,8 @@ def delete_item_db(item_title):
 
     return ret
 
-def edit_item_db(item_original_title, item_original_description, item_title, item_description, category_name):
+def edit_item_db(item_original_title, item_original_description, item_title, 
+item_description, category_name):
     """
     This function edits one item based on provided parameters.
     Returns 1 or None.
@@ -281,20 +261,16 @@ def edit_item_db(item_original_title, item_original_description, item_title, ite
     with conn:
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as curs:
 
-            curs.execute("SELECT * FROM categories WHERE name=%s",
-                         (category_name,))
-            category_list = curs.fetchall()
-
             curs.execute("SELECT * FROM items WHERE title=%s AND description=%s",
                          (item_original_title, item_original_description))
             item_list = curs.fetchall()
             
-            if (category_list and item_list):
-                for category in category_list:
-                    for item in item_list:
-                        if (item['cat_id'] == category['id']):
-                            curs.execute("UPDATE items SET title=%s, description=%s WHERE id=%s", (item_title,item_description,int(item['id'])))
-                            ret = 1
+            if (item_list):
+                for item in item_list:
+                    if (item['cat_name'] == category_name):
+                        curs.execute("UPDATE items SET title=%s, \
+description=%s WHERE id=%s", (item_title,item_description,int(item['id'])))
+                        ret = 1
 
     conn.close()
 
@@ -318,7 +294,7 @@ def add_item_db(item_title, item_description, category_name):
             if (category):
                 cat_id = int(category['id'])
                 print 'cat_id=',cat_id
-                curs.execute("INSERT INTO items (cat_id,title,description) VALUES (%s,%s,%s);", (cat_id,item_title,item_description))
+                curs.execute("INSERT INTO items (cat_id,cat_name,title,description) VALUES (%s,%s,%s,%s);", (cat_id,category_name,item_title,item_description))
                 ret = 1
 
     conn.close()
@@ -355,6 +331,7 @@ def catalog_app():
     """
     categories = get_categories_db()
     latest = get_latest_items_db()
+
     return render_template('catalog.html', categories=categories, latest=latest)
 
 @app.route('/catalog.json')
@@ -372,10 +349,12 @@ def add_item():
     Renders 'edit.html' template with empty values.
     Note: template for adding a new item is the same as editing new item.
     """
-    categories = get_categories_db()
-    
-    return render_template('edit.html', item={"title":"", "description":""},
+    if 'logged_in' in session:
+        categories = get_categories_db()
+        return render_template('edit.html', item={"title":"", "description":""},
                            categories=categories, category={})
+    else:
+        return redirect(url_for('login'))
 
 @app.route('/catalog/add', methods=['POST'])
 def add_item_redirect():
@@ -383,16 +362,19 @@ def add_item_redirect():
     HTTP request handler.
     Inserts new item into database and redirects to '/'
     """
-    item_title = request.form['title']
-    item_description = request.form['description']
-    category_name = request.form['categories']
+    if 'logged_in' in session:
+        item_title = request.form['title']
+        item_description = request.form['description']
+        category_name = request.form['categories']
 
-    ret = add_item_db(item_title, item_description, category_name)
+        ret = add_item_db(item_title, item_description, category_name)
 
-    if (ret):
-        return redirect('/')
+        if (ret):
+            return redirect('/')
+        else:
+            return render_template('error.html')
     else:
-        return render_template('error.html')
+        return redirect(url_for('login'))
 
 @app.route('/catalog/<item>/delete', methods=["GET"])
 def delete_item(item):
@@ -400,7 +382,10 @@ def delete_item(item):
     HTTP request handler.
     Renders 'delete.html' template.
     """
-    return render_template('delete.html', item=item)
+    if 'logged_in' in session:
+        return render_template('delete.html', item=item)
+    else:
+        return redirect(url_for('login'))
 
 @app.route('/catalog/delete', methods=['POST'])
 def delete_item_redirect():
@@ -408,14 +393,17 @@ def delete_item_redirect():
     HTTP request handler.
     Deletes item from database and redirects to '/'
     """
-    item_title = request.form['item_title']
+    if 'logged_in' in session:
+        item_title = request.form['item_title']
 
-    ret = delete_item_db(item_title)
+        ret = delete_item_db(item_title)
 
-    if (ret):
-        return redirect('/')
+        if (ret):
+            return redirect('/')
+        else:
+            return render_template('error.html')
     else:
-        return render_template('error.html')
+        return redirect(url_for('login'))
 
 @app.route('/catalog/<item>/edit', methods=["GET"])
 def edit_item(item):
@@ -424,16 +412,19 @@ def edit_item(item):
     Renders 'edit.html' template with fetched values or
     'error.html' template if any errors occurred.
     """
-    it = get_item_by_title_db(item)
+    if 'logged_in' in session:
+        it = get_item_by_title_db(item)
 
-    if (it):
-        category = get_category_by_id_db(int(it['cat_id']))
-        categories = get_categories_db()
+        if (it):
+            category = get_category_by_id_db(int(it['cat_id']))
+            categories = get_categories_db()
 
-        return render_template('edit.html', item=it, categories=categories,
+            return render_template('edit.html', item=it, categories=categories,
                                category=category)
+        else:
+            return render_template('error.html')
     else:
-        return render_template('error.html')
+        return redirect(url_for('login'))
 
 @app.route('/catalog/edit', methods=['POST'])
 def edit_item_redirect():
@@ -441,18 +432,22 @@ def edit_item_redirect():
     HTTP request handler.
     Inserts new item into database and redirects to '/'
     """
-    item_original_title = request.form['original_title']
-    item_original_description = request.form['original_description']
-    item_title = request.form['title']
-    item_description = request.form['description']
-    category_name = request.form['categories']
+    if 'logged_in' in session:
+        item_original_title = request.form['original_title']
+        item_original_description = request.form['original_description']
+        item_title = request.form['title']
+        item_description = request.form['description']
+        category_name = request.form['categories']
 
-    ret = edit_item_db(item_original_title, item_original_description, item_title, item_description, category_name)
+        ret = edit_item_db(item_original_title, item_original_description, 
+item_title, item_description, category_name)
 
-    if (ret):
-        return redirect('/')
+        if (ret):
+            return redirect('/')
+        else:
+            return render_template('error.html')
     else:
-        return render_template('error.html')
+        return redirect(url_for('login'))
 
 @app.route('/catalog/<category>/<item>')
 def category(category, item):
@@ -479,6 +474,27 @@ def category(category, item):
         else:
             return render_template('error.html')
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    error = None
+    if request.method == 'POST':
+        if request.form['username'] != app.config['USERNAME']:
+            error = 'Invalid username'
+        elif request.form['password'] != app.config['PASSWORD']:
+            error = 'Invalid password'
+        else:
+            session['logged_in'] = True
+            flash('You were logged in')
+            return redirect(url_for('catalog_app'))
+    return render_template('login.html', error=error)
+
+@app.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    flash('You were logged out')
+    return redirect(url_for('catalog_app'))
+
 if __name__ == '__main__':
     app.debug = True # TODO: remove debug
+    app.secret_key = 'A0Zr98j/3yX R~XHH!jmN]LWX/,?RT'
     app.run(port=8000)

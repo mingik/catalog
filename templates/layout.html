@@ -1,0 +1,12 @@
+<!doctype html>
+  <link rel=stylesheet type=text/css href="{{ url_for('static', filename='crud.css') }}">
+  <title>Catalog App</title>
+<div class=page>
+	     <div class="loginbox">
+			  {% if (session['logged_in']) %}<a href="/logout">Logout</a> {% else %}<a href="/login">Login</a>{% endif %}
+			</div>
+  <h1>  Catalog App</h1>
+  <div class=metanav>
+
+  {% block body %}{% endblock %}
+</div>

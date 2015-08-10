@@ -1,11 +1,6 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <title>Catalog App</title>
-</head>
-<body>
-  Catalog App
-  <br />
+{% extends "layout.html" %}
+
+{% block body %}
 
   <ul id="categories">Categories:
     {% for cat in categories %}
@@ -18,6 +13,4 @@
     <li><a href="/catalog/{{ category }}/{{ item.title }}">{{ item.title }}</a></li>
     {% endfor %}
   </ul>
-  
-  
-</body>
+{% endblock %}

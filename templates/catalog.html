@@ -1,12 +1,10 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <title>Catalog App</title>
-</head>
-<body>
-  Catalog App
+{% extends "layout.html" %}
 
+{% block body %}
+
+  {% if session['logged_in'] %}
   <a href="/catalog/add">Add Item</a>
+  {% endif %}
   <br />
   <ul id="categories">Categories:
     {% for category in categories %}
@@ -19,4 +17,4 @@
       <li><a href="/catalog/{{ item['cat_name'] }}/{{ item['title'] }}">{{ item['title'] }}</a></li>
     {% endfor %}
   </ul>
-</body>
+{% endblock %}
